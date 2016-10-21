@@ -9,6 +9,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
+import android.os.ParcelFileDescriptor;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.telephony.SubscriptionInfo;
@@ -18,6 +19,8 @@ import android.util.Log;
 import android.widget.TextView;
 
 import java.io.File;
+import java.io.FileDescriptor;
+import java.io.FileNotFoundException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -102,16 +105,23 @@ public class MainActivity extends AppCompatActivity {
 
     BroadcastReceiver onDownloadFinishReceiver = new BroadcastReceiver() {
         public void onReceive(Context ctxt, Intent intent) {
-            intent.getExtras().getLong(DownloadManager.EXTRA_DOWNLOAD_ID);
-            File fromFile = inProgressFile;
-            File toFile = finishedFile;
-            Log.d(TAG, "renaming from: "+ inProgressFile.toString() + ", to: " + finishedFile.toString());
-            fromFile.renameTo(toFile);
+            Log.d(TAG, "onReceive()");
+            long extraDownloadId = intent.getExtras().getLong(DownloadManager.EXTRA_DOWNLOAD_ID);
+            Uri fileUri = downloadManager.getUriForDownloadedFile(extraDownloadId);
+            File downloadedFile = new File(fileUri.getPath());
+
+            if(downloadedFile.getName().equals(inProgressFile.getName())) {
+                Log.d(TAG, "Detected finished download of " + inProgressFile.getName() + " :: renameing to: " + finishedFile.getName());
+                inProgressFile.renameTo(finishedFile);
+
+            } else {
+                Log.d(TAG, "Unmatchable file: " + downloadedFile.getName());
+            }
+
         }
     };
 
     private boolean validDownload(long downloadId) {
-
         Log.d(TAG,"Checking download status for id: " + downloadId);
         //Verify if download is a success
         Cursor c= downloadManager.query(new DownloadManager.Query().setFilterById(downloadId));
@@ -190,7 +200,7 @@ public class MainActivity extends AppCompatActivity {
                 Log.d(TAG, inProgressFile.toString() + "  exists.");
             }
         } else {
-            Log.d(TAG, inProgressFile.toString() + "  exists.");
+            Log.d(TAG, finishedFile.toString() + "  exists.");
         }
 
         // if file dosn't exist download it
