@@ -9,7 +9,6 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
-import android.os.ParcelFileDescriptor;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.telephony.SubscriptionInfo;
@@ -21,12 +20,9 @@ import android.widget.Button;
 import android.widget.TextView;
 
 import java.io.File;
-import java.io.FileDescriptor;
-import java.io.FileNotFoundException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
-import java.util.Random;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -38,8 +34,10 @@ public class MainActivity extends AppCompatActivity {
     private TextView mSubscriptionIdLabel;
     private TextView mSubscriptionToString;
     DownloadManager downloadManager;
-    private File inProgressFile;
-    private File finishedFile;
+    private File ipToASNFileInProgress;
+    private File ipToASNFileFinished;
+    private File ASNToNameFileInProgress;
+    private File ASNToNameFileFinished;
     private Context mContext;
     private Button mResetButton;
 
@@ -65,13 +63,16 @@ public class MainActivity extends AppCompatActivity {
         mResetButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                inProgressFile.delete();
-                finishedFile.delete();
+                ipToASNFileInProgress.delete();
+                ipToASNFileFinished.delete();
             }
         });
 
-        inProgressFile = new File(getApplicationContext().getExternalFilesDir("db_data"), "ipToASN.progress");
-        finishedFile = new File(getApplicationContext().getExternalFilesDir("db_data"), "ipToASN.tsv");
+        ipToASNFileInProgress = new File(getApplicationContext().getExternalFilesDir("db_data"), "ipToASN.progress");
+        ipToASNFileFinished = new File(getApplicationContext().getExternalFilesDir("db_data"), "ipToASN.tsv");
+        ASNToNameFileInProgress = new File(getApplicationContext().getExternalFilesDir("db_data"), "ASNToName.progress");
+        ASNToNameFileFinished = new File(getApplicationContext().getExternalFilesDir("db_data"), "ASNToName.tsv");
+
 
         mHandlerUpdateSubscriptionInfo = new Handler();
 
@@ -122,14 +123,15 @@ public class MainActivity extends AppCompatActivity {
             Uri fileUri = downloadManager.getUriForDownloadedFile(extraDownloadId);
             File downloadedFile = new File(fileUri.getPath());
 
-            if(downloadedFile.getName().equals(inProgressFile.getName())) {
-                Log.d(TAG, "Detected finished download of " + inProgressFile.getName() + " :: renameing to: " + finishedFile.getName());
-                inProgressFile.renameTo(finishedFile);
-
+            if(downloadedFile.getName().equals(ipToASNFileInProgress.getName())) {
+                Log.d(TAG, "Detected finished download of " + ipToASNFileInProgress.getName() + " :: renameing to: " + ipToASNFileFinished.getName());
+                ipToASNFileInProgress.renameTo(ipToASNFileFinished);
+            } else  if(downloadedFile.getName().equals(ASNToNameFileInProgress.getName())) {
+                    Log.d(TAG, "Detected finished download of " + ASNToNameFileInProgress.getName() + " :: renameing to: " + ASNToNameFileFinished.getName());
+                ASNToNameFileInProgress.renameTo(ASNToNameFileFinished);
             } else {
                 Log.d(TAG, "Unmatchable file: " + downloadedFile.getName());
             }
-
         }
     };
 
@@ -179,12 +181,8 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        Random r = new Random();
-
-
         mCarrierNameLabel.setText(activeSubscriptionInfoList.get(0).getCarrierName());
         mDisplayNameLabel.setText(activeSubscriptionInfoList.get(0).getDisplayName());
-
 
         mSubscriptionToString.setText(activeSubscriptionInfoList.get(0).toString());
 
@@ -193,27 +191,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     void updateIPInfo(){
-        if(finishedFile.exists() ) {
-            Calendar time = Calendar.getInstance();
-            time.add(Calendar.DAY_OF_YEAR, -7);
-            //I store the required attributes here and delete them
-            Date lastModified = new Date(finishedFile.lastModified());
-            if (lastModified.before(time.getTime())) {
-                finishedFile.delete();
-            }
-        }
-        if(!finishedFile.exists() ) {
+        deleteFileIfOlderThan(ipToASNFileFinished, 30);
+        deleteFileIfOlderThan(ASNToNameFileFinished, 30);
 
-            Log.d(TAG, finishedFile.toString() + " does not exist.");
-            if(!inProgressFile.exists()) {
-                Log.d(TAG, inProgressFile.toString() + " does not exist.");
-                    downloadIpToASNDB();
-            } else {
-                Log.d(TAG, inProgressFile.toString() + "  exists.");
-            }
-        } else {
-            Log.d(TAG, finishedFile.toString() + "  exists.");
-        }
+
+        if(!ipToASNFileFinished.exists())
+            downloadDB( "http://thyme.apnic.net/current/data-raw-table", ipToASNFileInProgress);
+
+        if(!ASNToNameFileFinished.exists())
+            downloadDB( "http://thyme.apnic.net/current/data-used-autnums", ASNToNameFileInProgress);
 
         // if file dosn't exist download it
         // fork off that work and show progress
@@ -224,11 +210,25 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private void downloadIpToASNDB() {
+    private void deleteFileIfOlderThan(File file, int days) {
+        if(file.exists() ) {
+            Calendar time = Calendar.getInstance();
+            time.add(Calendar.DAY_OF_YEAR, -1 * days);
+            //I store the required attributes here and delete them
+            Date lastModified = new Date(file.lastModified());
+            if (lastModified.before(time.getTime())) {
+                file.delete();
+            }
+        }
+    }
+
+    private void downloadDB(String url, File inProgressFile) {
         Log.d(TAG, "downloadIpToASNDB()");
-        String url = "http://thyme.apnic.net/current/data-raw-table";
+        if(inProgressFile.exists())
+            return;
+
         DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
-        request.setDescription("Some description");
+        request.setDescription("Dowloading "+inProgressFile.getName());
         request.setTitle("Some title");
 // in order for this if to run, you must use the android 3.2 to compile your app
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
