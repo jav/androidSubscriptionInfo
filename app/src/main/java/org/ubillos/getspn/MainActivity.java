@@ -20,13 +20,15 @@ import android.widget.Button;
 import android.widget.TextView;
 
 import java.io.File;
+import java.net.URI;
+import java.net.UnknownHostException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
-    private int mInterval = 2000;
+    private int mInterval = 5000;
     private Handler mHandlerUpdateSubscriptionInfo;
     TextView mCarrierNameLabel;
     private String TAG = "MainActivity";
@@ -43,9 +45,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView mIP;
     private TextView mASN;
     private TextView mASNname;
-    private TextView mIP6;
-    private TextView mASN6;
-    private TextView mASNname6;
+    private IPToASNResolver mIPToASNResolver;
 
 
     @Override
@@ -73,15 +73,6 @@ public class MainActivity extends AppCompatActivity {
 
         mASNname = (TextView) findViewById(R.id.ASN_name_label);
         mASNname.setText("ASNname");
-
-        mIP6 = (TextView) findViewById(R.id.ip6_label);
-        mIP6.setText("IP6");
-
-        mASN6 = (TextView) findViewById(R.id.ASN6_label);
-        mASN6.setText("ASN6");
-
-        mASNname6 = (TextView) findViewById(R.id.ASN6_name_label);
-        mASNname6.setText("ASN6name");
 
         mResetButton = (Button) findViewById(R.id.reset_button);
         mResetButton.setOnClickListener(new View.OnClickListener() {
@@ -116,6 +107,11 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume(){
         super.onResume();
+
+        if(ipToASNFileFinished.exists()) {
+            mIPToASNResolver = new IPToASNResolver(ipToASNFileFinished);
+        }
+
         startRepeatingTasks();
     }
 
@@ -150,6 +146,7 @@ public class MainActivity extends AppCompatActivity {
             if(downloadedFile.getName().equals(ipToASNFileInProgress.getName())) {
                 Log.d(TAG, "Detected finished download of " + ipToASNFileInProgress.getName() + " :: renameing to: " + ipToASNFileFinished.getName());
                 ipToASNFileInProgress.renameTo(ipToASNFileFinished);
+                mIPToASNResolver = new IPToASNResolver(ipToASNFileFinished);
             } else  if(downloadedFile.getName().equals(ASNToNameFileInProgress.getName())) {
                     Log.d(TAG, "Detected finished download of " + ASNToNameFileInProgress.getName() + " :: renameing to: " + ASNToNameFileFinished.getName());
                 ASNToNameFileInProgress.renameTo(ASNToNameFileFinished);
@@ -229,8 +226,18 @@ public class MainActivity extends AppCompatActivity {
         // fork off that work and show progress
         // return
 
-        Utils.getIPAddress(true); // IPv4
-        Utils.getIPAddress(false); // IPv6
+        mIP.setText(Utils.getIPAddress(true)); // IPv4
+
+        if(mIPToASNResolver != null) {
+            try {
+                mASN.setText("" + mIPToASNResolver.resolve(Utils.getIPAddress(true)));
+            } catch (UnknownHostException e) {
+                e.printStackTrace();
+            }
+        } else {
+            mASN.setText("Database not yet initialized");
+
+        }
 
     }
 
