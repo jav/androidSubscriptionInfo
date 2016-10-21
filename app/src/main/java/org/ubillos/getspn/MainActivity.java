@@ -40,6 +40,12 @@ public class MainActivity extends AppCompatActivity {
     private File ASNToNameFileFinished;
     private Context mContext;
     private Button mResetButton;
+    private TextView mIP;
+    private TextView mASN;
+    private TextView mASNname;
+    private TextView mIP6;
+    private TextView mASN6;
+    private TextView mASNname6;
 
 
     @Override
@@ -58,6 +64,24 @@ public class MainActivity extends AppCompatActivity {
 
         mSubscriptionToString = (TextView) findViewById(R.id.to_string_label);
         mSubscriptionToString.setText("Display name");
+
+        mIP = (TextView) findViewById(R.id.ip_label);
+        mIP.setText("IP");
+
+        mASN = (TextView) findViewById(R.id.ASN_label);
+        mASN.setText("ASN");
+
+        mASNname = (TextView) findViewById(R.id.ASN_name_label);
+        mASNname.setText("ASNname");
+
+        mIP6 = (TextView) findViewById(R.id.ip6_label);
+        mIP6.setText("IP6");
+
+        mASN6 = (TextView) findViewById(R.id.ASN6_label);
+        mASN6.setText("ASN6");
+
+        mASNname6 = (TextView) findViewById(R.id.ASN6_name_label);
+        mASNname6.setText("ASN6name");
 
         mResetButton = (Button) findViewById(R.id.reset_button);
         mResetButton.setOnClickListener(new View.OnClickListener() {

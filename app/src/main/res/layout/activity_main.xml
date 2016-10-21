@@ -32,6 +32,42 @@
         android:layout_below="@+id/subscription_id_label"
         android:text="Hello World!"
         android:id="@+id/to_string_label" />
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/to_string_label"
+        android:text="IP!!"
+        android:id="@+id/ip_label" />
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/ip_label"
+        android:text="ASN_label!"
+        android:id="@+id/ASN_label" />
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/ASN_label"
+        android:text="ASN_name_label!"
+        android:id="@+id/ASN_name_label" />
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/ASN_name_label"
+        android:text="IP!!"
+        android:id="@+id/ip6_label" />
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/ip6_label"
+        android:text="ASN_label!"
+        android:id="@+id/ASN6_label" />
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/ASN6_label"
+        android:text="ASN_name_label!"
+        android:id="@+id/ASN6_name_label" />
 
     <Button
         android:layout_width="wrap_content"
