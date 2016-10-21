@@ -46,6 +46,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView mASN;
     private TextView mASNname;
     private IPToASNResolver mIPToASNResolver;
+    private ASNToNameResolver mASNToNameResolver;
 
 
     @Override
@@ -111,6 +112,9 @@ public class MainActivity extends AppCompatActivity {
         if(ipToASNFileFinished.exists()) {
             mIPToASNResolver = new IPToASNResolver(ipToASNFileFinished);
         }
+        if(ASNToNameFileFinished.exists()) {
+            mASNToNameResolver = new ASNToNameResolver(ASNToNameFileFinished);
+        }
 
         startRepeatingTasks();
     }
@@ -148,8 +152,10 @@ public class MainActivity extends AppCompatActivity {
                 ipToASNFileInProgress.renameTo(ipToASNFileFinished);
                 mIPToASNResolver = new IPToASNResolver(ipToASNFileFinished);
             } else  if(downloadedFile.getName().equals(ASNToNameFileInProgress.getName())) {
-                    Log.d(TAG, "Detected finished download of " + ASNToNameFileInProgress.getName() + " :: renameing to: " + ASNToNameFileFinished.getName());
+                Log.d(TAG, "Detected finished download of " + ASNToNameFileInProgress.getName() + " :: renameing to: " + ASNToNameFileFinished.getName());
                 ASNToNameFileInProgress.renameTo(ASNToNameFileFinished);
+                mASNToNameResolver = new ASNToNameResolver(ASNToNameFileFinished);
+
             } else {
                 Log.d(TAG, "Unmatchable file: " + downloadedFile.getName());
             }
@@ -228,16 +234,27 @@ public class MainActivity extends AppCompatActivity {
 
         mIP.setText(Utils.getIPAddress(true)); // IPv4
 
+        // This blocks the UI thread
+        // It should be moved to an async task that either chains them
+        // or where the asn->name is only triggered if there is a buffered asn
         if(mIPToASNResolver != null) {
+            long ASN=0;
             try {
-                mASN.setText("" + mIPToASNResolver.resolve(Utils.getIPAddress(true)));
+                ASN = mIPToASNResolver.resolve(Utils.getIPAddress(true));
+                mASN.setText("ASN: " + ASN);
+
+                if(mASNToNameResolver != null) {
+                    mASNname.setText("ASN name: " + mASNToNameResolver.resolve(ASN));
+                } else {
+                    mASNname.setText("Database not yet initialized");
+                }
             } catch (UnknownHostException e) {
                 e.printStackTrace();
             }
         } else {
             mASN.setText("Database not yet initialized");
-
         }
+
 
     }
 

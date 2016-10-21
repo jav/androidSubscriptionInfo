@@ -37,7 +37,7 @@ public class IPToASNResolver {
 
     public long resolve(String ip) throws UnknownHostException {
         long ipAsNumber = ipToLong(ip);
-
+        long prevASN = 0;
         String line;
         try {
             InputStream fis = new FileInputStream(mFile);
@@ -52,14 +52,14 @@ public class IPToASNResolver {
                 Log.d(TAG, "network ip:" + networkIp + ", asn: "+ asn);
 
                 if(ipToLong(networkIp)>ipAsNumber) {
-                    return asn;
+                    return prevASN;
                 }
-
+                prevASN = asn;
             }
         } catch (Exception e) {
             Log.d(TAG, e.toString());
         }
 
-        return 1;
+        return 0;
     }
 }
