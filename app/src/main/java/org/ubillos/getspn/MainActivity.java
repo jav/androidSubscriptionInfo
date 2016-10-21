@@ -16,6 +16,8 @@ import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 
 import java.io.File;
@@ -39,6 +41,7 @@ public class MainActivity extends AppCompatActivity {
     private File inProgressFile;
     private File finishedFile;
     private Context mContext;
+    private Button mResetButton;
 
 
     @Override
@@ -57,6 +60,15 @@ public class MainActivity extends AppCompatActivity {
 
         mSubscriptionToString = (TextView) findViewById(R.id.to_string_label);
         mSubscriptionToString.setText("Display name");
+
+        mResetButton = (Button) findViewById(R.id.reset_button);
+        mResetButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                inProgressFile.delete();
+                finishedFile.delete();
+            }
+        });
 
         inProgressFile = new File(getApplicationContext().getExternalFilesDir("db_data"), "ipToASN.progress");
         finishedFile = new File(getApplicationContext().getExternalFilesDir("db_data"), "ipToASN.tsv");
