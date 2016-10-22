@@ -5,9 +5,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.database.Cursor;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -20,10 +18,7 @@ import android.widget.Button;
 import android.widget.TextView;
 
 import java.io.File;
-import java.net.URI;
 import java.net.UnknownHostException;
-import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
@@ -35,7 +30,6 @@ public class MainActivity extends AppCompatActivity {
     private TextView mDisplayNameLabel;
     private TextView mSubscriptionIdLabel;
     private TextView mSubscriptionToString;
-    DownloadManager downloadManager;
     private File ipToASNFileInProgress;
     private File ipToASNFileFinished;
     private File ASNToNameFileInProgress;
@@ -44,7 +38,7 @@ public class MainActivity extends AppCompatActivity {
     private Button mResetButton;
     private TextView mIP;
     private TextView mASN;
-    private TextView mASNname;
+    private TextView mASNName;
     private IPToASNResolver mIPToASNResolver;
     private ASNToNameResolver mASNToNameResolver;
 
@@ -72,30 +66,31 @@ public class MainActivity extends AppCompatActivity {
         mASN = (TextView) findViewById(R.id.ASN_label);
         mASN.setText("ASN");
 
-        mASNname = (TextView) findViewById(R.id.ASN_name_label);
-        mASNname.setText("ASNname");
+        mASNName = (TextView) findViewById(R.id.ASN_name_label);
+        mASNName.setText("ASNname");
 
         mResetButton = (Button) findViewById(R.id.reset_button);
         mResetButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                ipToASNFileInProgress.delete();
-                ipToASNFileFinished.delete();
+                mIPToASNResolver.deleteFiles();
+                mASNToNameResolver.deleteFiles();
             }
         });
 
-        ipToASNFileInProgress = new File(getApplicationContext().getExternalFilesDir("db_data"), "ipToASN.progress");
-        ipToASNFileFinished = new File(getApplicationContext().getExternalFilesDir("db_data"), "ipToASN.tsv");
-        ASNToNameFileInProgress = new File(getApplicationContext().getExternalFilesDir("db_data"), "ASNToName.progress");
-        ASNToNameFileFinished = new File(getApplicationContext().getExternalFilesDir("db_data"), "ASNToName.tsv");
 
 
         mHandlerUpdateSubscriptionInfo = new Handler();
 
         mContext = getApplicationContext();
 
-        downloadManager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
-        registerReceiver(onDownloadFinishReceiver,
+        mIPToASNResolver = new IPToASNResolver(mContext);
+        mASNToNameResolver = new ASNToNameResolver(mContext);
+
+
+        registerReceiver(mIPToASNResolver.getOnDownloadFinishedReceiver(),
+                new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
+        registerReceiver(mASNToNameResolver.getOnDownloadFinishedReceiver(),
                 new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
 
     }
@@ -108,21 +103,14 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume(){
         super.onResume();
-
-        if(ipToASNFileFinished.exists()) {
-            mIPToASNResolver = new IPToASNResolver(ipToASNFileFinished);
-        }
-        if(ASNToNameFileFinished.exists()) {
-            mASNToNameResolver = new ASNToNameResolver(ASNToNameFileFinished);
-        }
-
         startRepeatingTasks();
     }
 
     @Override
     protected void onDestroy(){
         super.onDestroy();
-        unregisterReceiver(onDownloadFinishReceiver);
+        unregisterReceiver(mIPToASNResolver.getOnDownloadFinishedReceiver());
+        unregisterReceiver(mASNToNameResolver.getOnDownloadFinishedReceiver());
 
     }
 
@@ -139,49 +127,6 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     };
-
-    BroadcastReceiver onDownloadFinishReceiver = new BroadcastReceiver() {
-        public void onReceive(Context ctxt, Intent intent) {
-            Log.d(TAG, "onReceive()");
-            long extraDownloadId = intent.getExtras().getLong(DownloadManager.EXTRA_DOWNLOAD_ID);
-            Uri fileUri = downloadManager.getUriForDownloadedFile(extraDownloadId);
-            File downloadedFile = new File(fileUri.getPath());
-
-            if(downloadedFile.getName().equals(ipToASNFileInProgress.getName())) {
-                Log.d(TAG, "Detected finished download of " + ipToASNFileInProgress.getName() + " :: renameing to: " + ipToASNFileFinished.getName());
-                ipToASNFileInProgress.renameTo(ipToASNFileFinished);
-                mIPToASNResolver = new IPToASNResolver(ipToASNFileFinished);
-            } else  if(downloadedFile.getName().equals(ASNToNameFileInProgress.getName())) {
-                Log.d(TAG, "Detected finished download of " + ASNToNameFileInProgress.getName() + " :: renameing to: " + ASNToNameFileFinished.getName());
-                ASNToNameFileInProgress.renameTo(ASNToNameFileFinished);
-                mASNToNameResolver = new ASNToNameResolver(ASNToNameFileFinished);
-
-            } else {
-                Log.d(TAG, "Unmatchable file: " + downloadedFile.getName());
-            }
-        }
-    };
-
-    private boolean validDownload(long downloadId) {
-        Log.d(TAG,"Checking download status for id: " + downloadId);
-        //Verify if download is a success
-        Cursor c= downloadManager.query(new DownloadManager.Query().setFilterById(downloadId));
-
-        if(c.moveToFirst()){
-            int status = c.getInt(c.getColumnIndex(DownloadManager.COLUMN_STATUS));
-
-            if(status == DownloadManager.STATUS_SUCCESSFUL){
-                Log.d(TAG, "File was downloading properly.");
-                return true;
-            }else{
-                int reason = c.getInt(c.getColumnIndex(DownloadManager.COLUMN_REASON));
-                Log.d(TAG, "Download not correct, status [" + status + "] reason [" + reason + "]");
-                return false;
-            }
-        }
-        return false;
-    }
-
 
     void startRepeatingTasks() {
         mStatusChecker.run();
@@ -218,77 +163,42 @@ public class MainActivity extends AppCompatActivity {
     }
 
     void updateIPInfo(){
-        deleteFileIfOlderThan(ipToASNFileFinished, 30);
-        deleteFileIfOlderThan(ASNToNameFileFinished, 30);
-
-
-        if(!ipToASNFileFinished.exists())
-            downloadDB( "http://thyme.apnic.net/current/data-raw-table", ipToASNFileInProgress);
-
-        if(!ASNToNameFileFinished.exists())
-            downloadDB( "http://thyme.apnic.net/current/data-used-autnums", ASNToNameFileInProgress);
-
-        // if file dosn't exist download it
-        // fork off that work and show progress
-        // return
+        mIPToASNResolver.downloadDB();
+        mASNToNameResolver.downloadDB();
 
         mIP.setText(Utils.getIPAddress(true)); // IPv4
 
         // This blocks the UI thread
         // It should be moved to an async task that either chains them
         // or where the asn->name is only triggered if there is a buffered asn
-        if(mIPToASNResolver != null) {
-            long ASN=0;
-            try {
-                ASN = mIPToASNResolver.resolve(Utils.getIPAddress(true));
-                mASN.setText("ASN: " + ASN);
 
-                if(mASNToNameResolver != null) {
-                    mASNname.setText("ASN name: " + mASNToNameResolver.resolve(ASN));
-                } else {
-                    mASNname.setText("Database not yet initialized");
-                }
-            } catch (UnknownHostException e) {
-                e.printStackTrace();
+        long ASN=-1;
+        try {
+            ASN = mIPToASNResolver.resolve(Utils.getIPAddress(true));
+            mASN.setText("ASN: " + ASN);
+        } catch (UnknownHostException e1) {
+            e1.printStackTrace();
+            mASN.setText("ASN: Couldn't understand this devices IP address (wirely formatted?).");
+        } catch (DownloadNotReadyException e1) {
+            mASN.setText("ASN: Database not ready");
+        }
+
+        if(ASN != -1) {
+            try{
+            String ASNName = mASNToNameResolver.resolve(ASN);
+            mASNName.setText("ASN name: " + ASNName);
+            } catch (DownloadNotReadyException e1){
+                // Normal, shit's just not done yet
+                mASNName.setText("Database not ready");
             }
         } else {
-            mASN.setText("Database not yet initialized");
+            mASNName.setText("No ASN to resolve ready.");
         }
 
 
     }
 
-    private void deleteFileIfOlderThan(File file, int days) {
-        if(file.exists() ) {
-            Calendar time = Calendar.getInstance();
-            time.add(Calendar.DAY_OF_YEAR, -1 * days);
-            //I store the required attributes here and delete them
-            Date lastModified = new Date(file.lastModified());
-            if (lastModified.before(time.getTime())) {
-                file.delete();
-            }
-        }
-    }
 
-    private void downloadDB(String url, File inProgressFile) {
-        Log.d(TAG, "downloadIpToASNDB()");
-        if(inProgressFile.exists())
-            return;
 
-        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
-        request.setDescription("Dowloading "+inProgressFile.getName());
-        request.setTitle("Some title");
-// in order for this if to run, you must use the android 3.2 to compile your app
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-            request.allowScanningByMediaScanner();
-            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-        }
-        request.setDestinationInExternalFilesDir(mContext, "db_data", inProgressFile.getName());
-        Log.d(TAG, "Dowloading to : " + inProgressFile.getName());
-
-// get download service and enqueue file
-        downloadManager.enqueue(request);
-
-    }
 
 }
