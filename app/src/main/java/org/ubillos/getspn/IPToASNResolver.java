@@ -1,3 +1,25 @@
+/**
+ *
+ * Usage
+ *   Init
+ *      IPToASNResolver mIPToASNResolver;
+ *      mIPToASNResolver = new IPToASNResolver(context);
+ *      registerReceiver(mIPToASNResolver.getOnDownloadFinishedReceiver(),
+ *              new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
+ *
+ *      // should not run in the UI thread
+ *      mIPToASNResolver.downloadDB();
+ *
+ *   use
+ *      // can be slow, don't run it in the ui thread
+ *      // TODO: Make a listenerclass for async callback:ing
+ *      ASN = mIPToASNResolver.resolve("123.45.78.90");
+ *
+ *   reset (optional)
+ *      mIPToASNResolver.deleteFiles();
+ *
+ */
+
 package org.ubillos.getspn;
 
 import android.annotation.TargetApi;

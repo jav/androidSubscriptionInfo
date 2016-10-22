@@ -1,3 +1,25 @@
+/**
+ *
+ * Usage
+ *   Init
+ *      ASNToNameResolver mASNToNameResolver;
+ *      mASNToNameResolver = new ASNToNameResolver(context);
+ *      registerReceiver(mASNToNameResolver.getOnDownloadFinishedReceiver(),
+ *              new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
+ *
+ *      // should not run in the UI thread
+ *      mASNToNameResolver.downloadDB();
+ *
+ *   use
+ *      // can be slow, don't run it in the ui thread
+ *      // TODO: Make a listenerclass for async callback:ing
+ *      ASN = mASNToNameResolver.resolve(12345);
+ *
+ *   reset (optional)
+ *      mASNToNameResolver.deleteFiles();
+ *
+ */
+
 package org.ubillos.getspn;
 
 import android.app.DownloadManager;
